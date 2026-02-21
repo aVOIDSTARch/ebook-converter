@@ -28,7 +28,6 @@ pub trait FormatWriter: Send + Sync {
         Self: Sized;
 }
 
-#[derive(Debug)]
 pub struct WriteOptions {
     pub image_quality: u8,
     pub epub_version: Option<EpubVersion>,
