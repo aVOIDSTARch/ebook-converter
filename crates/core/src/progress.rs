@@ -14,3 +14,28 @@ pub struct ProgressEvent {
 pub trait ProgressHandler: Send {
     fn on_progress(&self, event: ProgressEvent);
 }
+
+/// A no-op progress handler for when progress reporting is not needed.
+pub struct NoopProgress;
+
+impl ProgressHandler for NoopProgress {
+    fn on_progress(&self, _event: ProgressEvent) {}
+}
+
+/// Helper to emit a progress event if a handler is provided.
+pub fn emit_progress(
+    handler: Option<&dyn ProgressHandler>,
+    operation: &str,
+    current: u64,
+    total: Option<u64>,
+    message: Option<&str>,
+) {
+    if let Some(h) = handler {
+        h.on_progress(ProgressEvent {
+            operation: operation.to_string(),
+            current,
+            total,
+            message: message.map(|s| s.to_string()),
+        });
+    }
+}
