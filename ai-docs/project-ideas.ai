@@ -1,3 +1,4 @@
 ## This file contains the ideas for this specific project
 
+- use rust or go
 - This project is designed to take plain text, pdf, epub, mobi and other ebook formats and interchange them, check that they are formatted correctly and repair broken files and conveet to smaller file soze maybe
