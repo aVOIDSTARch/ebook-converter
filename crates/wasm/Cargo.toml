@@ -1,0 +1,17 @@
+[package]
+name = "ebook-converter-wasm"
+description = "WASM bindings for ebook-converter"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ebook-converter-core.workspace = true
+wasm-bindgen.workspace = true
+serde.workspace = true
+serde_json.workspace = true

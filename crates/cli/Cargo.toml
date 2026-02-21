@@ -1,0 +1,27 @@
+[package]
+name = "ebook-converter"
+description = "CLI tool for ebook format conversion, validation, and repair"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "ebook-converter"
+path = "src/main.rs"
+
+[dependencies]
+ebook-converter-core.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+indicatif.workspace = true
+tokio = { workspace = true, features = ["rt", "macros"] }
+
+[dev-dependencies]
+assert_cmd.workspace = true
+tempfile.workspace = true
+pretty_assertions.workspace = true

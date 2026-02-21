@@ -1,0 +1,97 @@
+[workspace]
+members = [
+    "crates/core",
+    "crates/cli",
+    "crates/ffi",
+    "crates/wasm",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ebook-converter/ebook-converter"
+rust-version = "1.75"
+
+[workspace.dependencies]
+# Core library (internal)
+ebook-converter-core = { path = "crates/core" }
+
+# EPUB / ZIP / XML
+zip = "2"
+quick-xml = { version = "0.37", features = ["serialize"] }
+
+# HTML parsing
+html5ever = "0.29"
+scraper = "0.22"
+
+# Markdown
+pulldown-cmark = "0.12"
+
+# PDF
+lopdf = "0.34"
+printpdf = "0.7"
+
+# Image processing
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Error handling
+thiserror = "2"
+
+# WASM
+wasm-bindgen = "0.2"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# HTTP client (for metadata lookup)
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tokio = { version = "1", features = ["rt", "macros"] }
+
+# Config / directories
+dirs = "6"
+
+# File watching
+notify = "7"
+
+# Progress bars
+indicatif = "0.17"
+
+# Hashing
+sha2 = "0.10"
+
+# Unicode
+unicode-normalization = "0.1"
+unicode-segmentation = "1"
+
+# Fuzzy matching
+strsim = "0.11"
+
+# JSON path (for custom provider field mapping)
+serde_json_path = "0.7"
+
+# Dev/test dependencies
+[workspace.dependencies.assert_cmd]
+version = "2"
+
+[workspace.dependencies.tempfile]
+version = "3"
+
+[workspace.dependencies.pretty_assertions]
+version = "1"
+
+[workspace.dependencies.proptest]
+version = "1"
+
+[workspace.dependencies.wiremock]
+version = "0.6"

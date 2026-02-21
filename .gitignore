@@ -250,7 +250,7 @@ go.work
 
 # Rust
 target/
-Cargo.lock
+# Note: Cargo.lock IS tracked — this workspace includes a binary crate
 
 # Ruby
 *.gem
