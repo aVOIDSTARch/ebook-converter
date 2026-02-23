@@ -43,7 +43,28 @@ pub enum EbookError {
     #[error("Transform error: {0}")]
     Transform(#[from] TransformError),
 
+    #[error("Library error: {0}")]
+    Library(#[from] LibraryError),
+
     #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum LibraryError {
+    #[error("Library operation failed: {0}")]
+    Failed(String),
+
+    #[error("Not supported by this library")]
+    NotSupported,
+
+    #[error("Entry not found: {0}")]
+    NotFound(String),
+
+    #[error("Authentication required or failed")]
+    AuthFailed,
+
+    #[error(transparent)]
     Io(#[from] std::io::Error),
 }
 

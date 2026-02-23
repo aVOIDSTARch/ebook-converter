@@ -1,5 +1,7 @@
 //! Metadata lookup via pluggable providers (Open Library, Google Books, custom).
 
+pub mod openlibrary;
+
 use crate::error::LookupError;
 
 pub trait MetadataProvider: Send + Sync {
@@ -16,7 +18,7 @@ pub struct MetadataQuery {
     pub isbn: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct MetadataResult {
     pub title: Option<String>,
     pub authors: Vec<String>,

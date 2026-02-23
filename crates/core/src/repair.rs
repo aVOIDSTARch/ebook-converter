@@ -26,20 +26,44 @@ impl Default for RepairOptions {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct RepairReport {
     pub fixes_applied: Vec<RepairAction>,
     pub fixes_failed: Vec<(RepairAction, String)>,
     pub issues_remaining: Vec<ValidationIssue>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct RepairAction {
     pub code: String,
     pub description: String,
 }
 
 pub fn repair(doc: &mut Document, opts: &RepairOptions) -> RepairReport {
-    let _ = (doc, opts);
-    todo!()
+    let mut fixes_applied = Vec::new();
+    let mut fixes_failed = Vec::new();
+
+    if opts.fix_encoding {
+        crate::encoding::normalize_encoding(doc, &crate::encoding::EncodingOptions::default());
+        fixes_applied.push(RepairAction {
+            code: "encoding".to_string(),
+            description: "Normalized text encoding".to_string(),
+        });
+    }
+
+    if opts.fix_metadata && doc.metadata.language.as_deref().unwrap_or("").is_empty() {
+        doc.metadata.language = Some("en".to_string());
+        fixes_applied.push(RepairAction {
+            code: "metadata-language".to_string(),
+            description: "Set default language".to_string(),
+        });
+    }
+
+    let issues_remaining = crate::validate::validate(doc, &crate::validate::ValidateOptions::default());
+
+    RepairReport {
+        fixes_applied,
+        fixes_failed,
+        issues_remaining,
+    }
 }

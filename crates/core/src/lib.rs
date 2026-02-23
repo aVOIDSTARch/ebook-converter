@@ -1,5 +1,7 @@
 pub mod accessibility;
 pub mod config;
+pub mod convert;
+pub mod cover;
 pub mod dedup;
 pub mod detect;
 pub mod document;

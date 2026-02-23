@@ -30,9 +30,18 @@ impl Default for AppConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LibraryConfig {
+    #[serde(default = "default_library_format")]
     pub format: String,
     pub output_dir: Option<String>,
+    #[serde(default = "default_library_template")]
     pub template: String,
+}
+
+fn default_library_format() -> String {
+    "epub3".to_string()
+}
+fn default_library_template() -> String {
+    "{author} - {title}.{ext}".to_string()
 }
 
 impl Default for LibraryConfig {
@@ -85,6 +94,31 @@ pub struct WatchConfig {
 
 /// Load config from the default path (`~/.config/ebook-converter/config.toml`).
 pub fn load_config() -> AppConfig {
-    // TODO: Load from file, falling back to defaults
-    AppConfig::default()
+    let config_path = match dirs::config_dir() {
+        Some(mut p) => {
+            p.push("ebook-converter");
+            p.push("config.toml");
+            p
+        }
+        None => return AppConfig::default(),
+    };
+
+    let content = match std::fs::read_to_string(&config_path) {
+        Ok(c) => c,
+        Err(_) => return AppConfig::default(),
+    };
+
+    match toml::from_str::<AppConfig>(&content) {
+        Ok(cfg) => cfg,
+        Err(_) => AppConfig::default(),
+    }
+}
+
+/// Return the default config file path (for init and show).
+pub fn config_path() -> Option<std::path::PathBuf> {
+    dirs::config_dir().map(|mut p| {
+        p.push("ebook-converter");
+        p.push("config.toml");
+        p
+    })
 }

@@ -7,10 +7,11 @@ use std::io::{Read, Seek};
 use quick_xml::events::Event;
 use quick_xml::Reader as XmlReader;
 
+use crate::detect::{DetectResult, Format};
 use crate::document::*;
 use crate::error::ReadError;
 use crate::progress::{emit_progress, ProgressHandler};
-use crate::readers::ReadOptions;
+use crate::readers::{FormatReader, ReadOptions};
 use crate::security;
 
 pub struct EpubReader;
@@ -22,11 +23,20 @@ impl EpubReader {
         opts: &ReadOptions,
         progress: Option<&dyn ProgressHandler>,
     ) -> Result<Document, ReadError> {
-        let mut archive = zip::ZipArchive::new(input)
-            .map_err(|e| ReadError::MalformedFile {
-                format: "EPUB".into(),
-                detail: format!("Invalid ZIP archive: {e}"),
-            })?;
+        read_epub_impl(input, opts, progress)
+    }
+}
+
+fn read_epub_impl<R: Read + Seek>(
+    input: R,
+    opts: &ReadOptions,
+    progress: Option<&dyn ProgressHandler>,
+) -> Result<Document, ReadError> {
+    let mut archive = zip::ZipArchive::new(input)
+        .map_err(|e| ReadError::MalformedFile {
+            format: "EPUB".into(),
+            detail: format!("Invalid ZIP archive: {e}"),
+        })?;
 
         // Security checks
         security::check_file_count(archive.len() as u64, &opts.security)?;
@@ -125,6 +135,31 @@ impl EpubReader {
             text_direction: opf.text_direction,
             epub_version: opf.epub_version,
         })
+}
+
+impl FormatReader for EpubReader {
+    fn detect(header: &[u8]) -> DetectResult {
+        if header.starts_with(b"PK\x03\x04") {
+            DetectResult {
+                format: Format::Epub,
+                confidence: 0.7,
+                mime_type: Format::Epub.mime_type(),
+            }
+        } else {
+            DetectResult {
+                format: Format::Epub,
+                confidence: 0.0,
+                mime_type: Format::Epub.mime_type(),
+            }
+        }
+    }
+
+    fn read<R: Read + Seek>(
+        input: R,
+        opts: &ReadOptions,
+        progress: Option<&dyn ProgressHandler>,
+    ) -> Result<Document, ReadError> {
+        Self::read(input, opts, progress)
     }
 }
 
@@ -436,6 +471,7 @@ fn parse_xhtml_to_chapter(
     let mut inline_stack: Vec<Vec<InlineNode>> = Vec::new();
     let mut chapter_title: Option<String> = None;
     let mut current_heading_level: Option<u8> = None;
+    let mut link_href_stack: Vec<String> = Vec::new();
 
     // Simple state machine for parsing XHTML into content nodes
     loop {
@@ -472,6 +508,16 @@ fn parse_xhtml_to_chapter(
                         inline_stack.push(Vec::new());
                     }
                     "a" if in_body && !inline_stack.is_empty() => {
+                        let mut href = String::new();
+                        for attr in e.attributes().flatten() {
+                            let key = String::from_utf8_lossy(attr.key.local_name().as_ref())
+                                .to_string();
+                            if key == "href" {
+                                href = String::from_utf8_lossy(&attr.value).to_string();
+                                break;
+                            }
+                        }
+                        link_href_stack.push(href);
                         inline_stack.push(Vec::new());
                     }
                     "code" if in_body && !inline_stack.is_empty() => {
@@ -595,9 +641,9 @@ fn parse_xhtml_to_chapter(
                     "a" if in_body => {
                         if let Some(children) = inline_stack.pop() {
                             if let Some(parent) = inline_stack.last_mut() {
-                                // TODO: extract href from the opening tag
+                                let href = link_href_stack.pop().unwrap_or_default();
                                 parent.push(InlineNode::Link {
-                                    href: String::new(),
+                                    href,
                                     children,
                                 });
                             }

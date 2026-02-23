@@ -1,6 +1,10 @@
 //! Size optimization: image recompression, font subsetting, CSS/HTML minification.
 
-use crate::document::Document;
+use std::collections::HashMap;
+
+use sha2::{Sha256, Digest};
+
+use crate::document::{Document, ResourceMap};
 
 #[derive(Debug, Clone)]
 pub struct OptimizeOptions {
@@ -25,7 +29,7 @@ impl Default for OptimizeOptions {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct OptimizeReport {
     pub original_size_bytes: u64,
     pub optimized_size_bytes: u64,
@@ -33,6 +37,32 @@ pub struct OptimizeReport {
 }
 
 pub fn optimize(doc: &mut Document, opts: &OptimizeOptions) -> OptimizeReport {
-    let _ = (doc, opts);
-    todo!()
+    let original_size: u64 = doc.resources.iter().map(|(_, r)| r.data.len() as u64).sum();
+    let mut actions = Vec::new();
+
+    if opts.dedup_resources {
+        let mut seen: HashMap<[u8; 32], String> = HashMap::new();
+        let mut new_resources = ResourceMap::new();
+        for (id, res) in doc.resources.iter() {
+            let mut hasher = Sha256::new();
+            hasher.update(&res.data);
+            let key: [u8; 32] = hasher.finalize().into();
+            if let Some(first_id) = seen.get(&key) {
+                actions.push(format!("Dedup resource {} -> {}", id, first_id));
+                continue;
+            }
+            seen.insert(key, id.clone());
+            new_resources.insert(id.clone(), res.clone());
+        }
+        if new_resources.len() != doc.resources.len() {
+            doc.resources = new_resources;
+        }
+    }
+
+    let optimized_size: u64 = doc.resources.iter().map(|(_, r)| r.data.len() as u64).sum();
+    OptimizeReport {
+        original_size_bytes: original_size,
+        optimized_size_bytes: optimized_size,
+        actions,
+    }
 }
