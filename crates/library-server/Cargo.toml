@@ -24,3 +24,12 @@ uuid.workspace = true
 percent-encoding = "2"
 dirs = "6"
 bytes = "1"
+
+[dev-dependencies]
+tempfile = "3"
+tower = { version = "0.4", features = ["util"] }
+http = "1"
+http-body = "1"
+http-body-util = "0.1"
+hyper = { version = "1", features = ["client", "http1"] }
+hyper-util = { version = "0.1", features = ["client-legacy"] }

@@ -46,3 +46,39 @@ pub fn format_title(
 
     Ok(out)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::document::Metadata;
+
+    #[test]
+    fn format_title_basic() {
+        let out = format_title("mybook.epub", "{author} - {title}.{ext}", None).unwrap();
+        assert_eq!(out, "Unknown - mybook.epub");
+    }
+
+    #[test]
+    fn format_title_with_metadata() {
+        let meta = Metadata {
+            title: Some("The Book".to_string()),
+            authors: vec!["Alice".to_string()],
+            ..Default::default()
+        };
+        let out = format_title("x.epub", "{author} - {title}.{ext}", Some(&meta)).unwrap();
+        assert_eq!(out, "Alice - The Book.epub");
+    }
+
+    #[test]
+    fn format_title_kebab() {
+        let meta = Metadata {
+            title: Some("Hello World".to_string()),
+            authors: vec!["Jane Doe".to_string()],
+            ..Default::default()
+        };
+        let out = format_title("x.txt", "{author|kebab}-{title|kebab}.{ext}", Some(&meta)).unwrap();
+        assert!(out.contains("Jane-Doe"));
+        assert!(out.contains("Hello-World"));
+        assert!(out.ends_with(".txt"));
+    }
+}

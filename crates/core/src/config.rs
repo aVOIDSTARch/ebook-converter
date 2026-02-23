@@ -169,3 +169,49 @@ pub fn read_options_from_config(cfg: &AppConfig) -> ReadOptions {
 pub fn write_options_from_config(_cfg: &AppConfig) -> WriteOptions {
     WriteOptions::default()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn security_limits_from_config_default() {
+        let c = SecurityConfig::default();
+        let limits = security_limits_from_config(&c);
+        assert_eq!(limits.max_compression_ratio, 100);
+    }
+
+    #[test]
+    fn security_limits_from_config_custom() {
+        let c = SecurityConfig {
+            max_file_size_mb: Some(500),
+            max_compression_ratio: Some(50),
+        };
+        let limits = security_limits_from_config(&c);
+        assert_eq!(limits.max_total_size_bytes, 500 * 1024 * 1024);
+        assert_eq!(limits.max_compression_ratio, 50);
+    }
+
+    #[test]
+    fn encoding_options_from_config_custom() {
+        let c = EncodingConfig {
+            unicode_form: "NFD".to_string(),
+            smart_quotes: true,
+            normalize_ligatures: true,
+            fix_macos_nfd: false,
+        };
+        let opts = super::encoding_options_from_config(&c);
+        assert!(matches!(opts.unicode_form, crate::encoding::UnicodeForm::Nfd));
+        assert!(opts.smart_quotes);
+        assert!(opts.normalize_ligatures);
+        assert!(!opts.fix_macos_nfd);
+    }
+
+    #[test]
+    fn read_options_from_config_builds() {
+        let cfg = AppConfig::default();
+        let opts = super::read_options_from_config(&cfg);
+        assert!(opts.extract_cover);
+        assert!(opts.parse_toc);
+    }
+}

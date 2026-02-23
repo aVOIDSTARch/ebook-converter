@@ -269,3 +269,104 @@ impl LibraryConnection for DirLibrary {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stub_library_name_and_capabilities() {
+        let stub = StubLibrary::new();
+        assert_eq!(stub.name(), "Stub (no library configured)");
+        let cap = stub.capabilities().unwrap();
+        assert!(!cap.list && !cap.get && !cap.put && !cap.delete && !cap.search);
+    }
+
+    #[test]
+    fn stub_library_list_empty() {
+        let stub = StubLibrary::new();
+        let r = stub.list(&ListOptions::default()).unwrap();
+        assert_eq!(r.entries.len(), 0);
+        assert_eq!(r.total, Some(0));
+    }
+
+    #[test]
+    fn stub_library_get_not_supported() {
+        let stub = StubLibrary::new();
+        let err = stub.get("any").unwrap_err();
+        assert!(matches!(err, LibraryError::NotSupported));
+    }
+
+    #[test]
+    fn stub_library_put_not_supported() {
+        let stub = StubLibrary::new();
+        let err = stub.put(b"data", "epub", None).unwrap_err();
+        assert!(matches!(err, LibraryError::NotSupported));
+    }
+
+    #[test]
+    fn dir_library_list_get_put_delete() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().to_path_buf();
+        std::fs::write(path.join("book.epub"), b"epub content").unwrap();
+        std::fs::write(path.join("other.txt"), b"text content").unwrap();
+        std::fs::write(path.join("ignore.xyz"), b"ignored").unwrap();
+
+        let lib = DirLibrary::new(&path);
+        assert!(lib.name().len() > 0);
+        let cap = lib.capabilities().unwrap();
+        assert!(cap.list && cap.get && cap.put && cap.delete);
+
+        let list = lib.list(&ListOptions::default()).unwrap();
+        assert_eq!(list.entries.len(), 2);
+        assert_eq!(list.total, Some(2));
+        let ids: Vec<_> = list.entries.iter().map(|e| e.id.as_str()).collect();
+        assert!(ids.contains(&"book.epub"));
+        assert!(ids.contains(&"other.txt"));
+
+        let (data, fmt) = lib.get("book.epub").unwrap();
+        assert_eq!(data, b"epub content");
+        assert_eq!(fmt, "epub");
+
+        let meta = crate::document::Metadata {
+            title: Some("New Book".to_string()),
+            authors: vec!["Author".to_string()],
+            ..Default::default()
+        };
+        let id = lib.put(b"new content", "epub", Some(&meta)).unwrap();
+        assert!(id.contains("Author") && id.contains("New Book") && id.ends_with(".epub"));
+        let (data, _) = lib.get(&id).unwrap();
+        assert_eq!(data, b"new content");
+
+        lib.delete(&id).unwrap();
+        assert!(lib.get(&id).is_err());
+    }
+
+    #[test]
+    fn dir_library_list_filter_query_and_format() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path();
+        std::fs::write(path.join("alpha.epub"), b"a").unwrap();
+        std::fs::write(path.join("beta.epub"), b"b").unwrap();
+        std::fs::write(path.join("alpha.txt"), b"c").unwrap();
+
+        let lib = DirLibrary::new(path);
+        let list = lib.list(&ListOptions { query: Some("alpha".to_string()), ..Default::default() }).unwrap();
+        assert_eq!(list.entries.len(), 2);
+
+        let list = lib.list(&ListOptions { format: Some("epub".to_string()), ..Default::default() }).unwrap();
+        assert_eq!(list.entries.len(), 2);
+        assert!(list.entries.iter().all(|e| e.format == "epub"));
+
+        let list = lib.list(&ListOptions { offset: Some(1), limit: Some(1), ..Default::default() }).unwrap();
+        assert_eq!(list.entries.len(), 1);
+    }
+
+    #[test]
+    fn dir_library_get_not_found() {
+        let dir = tempfile::tempdir().unwrap();
+        let lib = DirLibrary::new(dir.path());
+        let err = lib.get("nonexistent.epub").unwrap_err();
+        assert!(matches!(err, LibraryError::NotFound(_)));
+    }
+}

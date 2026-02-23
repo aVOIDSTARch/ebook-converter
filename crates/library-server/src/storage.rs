@@ -167,3 +167,58 @@ impl DirStore {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dir_store_capabilities() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = DirStore::new(dir.path().to_path_buf());
+        let cap = store.capabilities();
+        assert!(cap.list && cap.get && cap.put && cap.delete && cap.search);
+    }
+
+    #[test]
+    fn dir_store_list_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = DirStore::new(dir.path().to_path_buf());
+        let r = store.list(&ListOptions::default()).unwrap();
+        assert_eq!(r.entries.len(), 0);
+        assert_eq!(r.total, Some(0));
+    }
+
+    #[test]
+    fn dir_store_list_get_put_delete() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().to_path_buf();
+        std::fs::write(path.join("a.epub"), b"epub1").unwrap();
+        std::fs::write(path.join("b.txt"), b"text1").unwrap();
+
+        let store = DirStore::new(path.clone());
+        let list = store.list(&ListOptions::default()).unwrap();
+        assert_eq!(list.entries.len(), 2);
+        assert_eq!(list.total, Some(2));
+
+        let (data, fmt) = store.get("a.epub").unwrap();
+        assert_eq!(data, b"epub1");
+        assert_eq!(fmt, "epub");
+
+        let id = store.put(b"new", None, Some("epub")).unwrap();
+        assert!(id.ends_with(".epub"));
+        let (data, _) = store.get(&id).unwrap();
+        assert_eq!(data, b"new");
+
+        store.delete(&id).unwrap();
+        assert!(store.get(&id).is_err());
+    }
+
+    #[test]
+    fn dir_store_safe_path_rejects_traversal() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = DirStore::new(dir.path().to_path_buf());
+        assert!(store.get("../etc/passwd").is_err());
+        assert!(store.get("..").is_err());
+    }
+}

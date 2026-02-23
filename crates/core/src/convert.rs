@@ -108,3 +108,31 @@ pub fn parse_format(s: &str) -> Option<Format> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_format_epub_txt() {
+        assert_eq!(parse_format("epub"), Some(Format::Epub));
+        assert_eq!(parse_format("EPUB"), Some(Format::Epub));
+        assert_eq!(parse_format("txt"), Some(Format::PlainText));
+        assert_eq!(parse_format("text"), Some(Format::PlainText));
+    }
+
+    #[test]
+    fn parse_format_html_md_ssml_pdf() {
+        assert_eq!(parse_format("html"), Some(Format::Html));
+        assert_eq!(parse_format("md"), Some(Format::Markdown));
+        assert_eq!(parse_format("markdown"), Some(Format::Markdown));
+        assert_eq!(parse_format("ssml"), Some(Format::Ssml));
+        assert_eq!(parse_format("pdf"), Some(Format::Pdf));
+    }
+
+    #[test]
+    fn parse_format_unknown() {
+        assert_eq!(parse_format(""), None);
+        assert_eq!(parse_format("xyz"), None);
+    }
+}
