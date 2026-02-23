@@ -1,6 +1,14 @@
 //! Config file parsing for `~/.config/ebook-converter/config.toml`.
+//!
+//! Use `read_options_from_config` and `write_options_from_config` to build
+//! read/write options from the loaded config so security and encoding settings apply.
 
 use serde::{Deserialize, Serialize};
+
+use crate::encoding::{EncodingOptions, UnicodeForm};
+use crate::readers::ReadOptions;
+use crate::security::SecurityLimits;
+use crate::writers::WriteOptions;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -121,4 +129,43 @@ pub fn config_path() -> Option<std::path::PathBuf> {
         p.push("config.toml");
         p
     })
+}
+
+/// Build security limits from config. Uses defaults for any unset values.
+pub fn security_limits_from_config(c: &SecurityConfig) -> SecurityLimits {
+    let mut limits = SecurityLimits::default();
+    if let Some(mb) = c.max_file_size_mb {
+        limits.max_total_size_bytes = mb.saturating_mul(1024).saturating_mul(1024);
+    }
+    if let Some(r) = c.max_compression_ratio {
+        limits.max_compression_ratio = r;
+    }
+    limits
+}
+
+/// Build encoding options from config.
+pub fn encoding_options_from_config(c: &EncodingConfig) -> EncodingOptions {
+    EncodingOptions {
+        unicode_form: UnicodeForm::from_str(&c.unicode_form),
+        smart_quotes: c.smart_quotes,
+        normalize_ligatures: c.normalize_ligatures,
+        normalize_dashes: EncodingOptions::default().normalize_dashes,
+        normalize_whitespace: EncodingOptions::default().normalize_whitespace,
+        fix_macos_nfd: c.fix_macos_nfd,
+    }
+}
+
+/// Build read options from full app config (security + encoding).
+pub fn read_options_from_config(cfg: &AppConfig) -> ReadOptions {
+    ReadOptions {
+        security: security_limits_from_config(&cfg.security),
+        extract_cover: true,
+        parse_toc: true,
+        encoding: encoding_options_from_config(&cfg.encoding),
+    }
+}
+
+/// Build write options from full app config. Uses defaults for options not in config.
+pub fn write_options_from_config(_cfg: &AppConfig) -> WriteOptions {
+    WriteOptions::default()
 }

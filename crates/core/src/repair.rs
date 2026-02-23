@@ -41,7 +41,7 @@ pub struct RepairAction {
 
 pub fn repair(doc: &mut Document, opts: &RepairOptions) -> RepairReport {
     let mut fixes_applied = Vec::new();
-    let mut fixes_failed = Vec::new();
+    let fixes_failed = Vec::new();
 
     if opts.fix_encoding {
         crate::encoding::normalize_encoding(doc, &crate::encoding::EncodingOptions::default());

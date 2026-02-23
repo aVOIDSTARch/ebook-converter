@@ -1,4 +1,14 @@
 //! Conversion pipeline: detect → read → transform → write.
+//!
+//! **Supported format matrix (read × write):**
+//!
+//! | Input  | Output |
+//! |--------|--------|
+//! | EPUB   | EPUB, TXT |
+//! | TXT    | EPUB, TXT |
+//!
+//! Other formats (HTML, MD, PDF, SSML, etc.) are detected but readers/writers
+//! may not be implemented yet; see PROJECT-TODO-AND-IMPROVEMENTS.md.
 
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom};
@@ -59,7 +69,10 @@ pub fn read_document<R: std::io::Read + std::io::Seek>(
     match format {
         Format::Epub => EpubReader::read(input, opts, progress),
         Format::PlainText => TxtReader::read(input, opts, progress),
-        _ => Err(ReadError::UnsupportedFormat(format!("Reading {:?} is not supported", format))),
+        _ => Err(ReadError::UnsupportedFormat(format!(
+            "reading {} is not yet supported; supported input formats: epub, txt",
+            format
+        ))),
     }
 }
 
@@ -81,11 +94,17 @@ pub fn write_document<W: std::io::Write>(
     }
 }
 
-/// Parse format from string (e.g. "epub", "txt").
+/// Parse format from string. Returns a format that has a reader/writer implemented.
+/// Additional strings (html, md, ssml, pdf) may be added for CLI/API consistency
+/// before their readers/writers exist.
 pub fn parse_format(s: &str) -> Option<Format> {
     match s.to_lowercase().as_str() {
         "epub" => Some(Format::Epub),
         "txt" | "text" => Some(Format::PlainText),
+        "html" => Some(Format::Html),
+        "md" | "markdown" => Some(Format::Markdown),
+        "ssml" => Some(Format::Ssml),
+        "pdf" => Some(Format::Pdf),
         _ => None,
     }
 }

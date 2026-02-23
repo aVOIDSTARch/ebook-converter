@@ -10,21 +10,21 @@ Project-wide backlog for the main ebook-converter (conversion pipeline, CLI, FFI
 
 - [ ] **More readers** – Add readers for formats already detected: HTML, Markdown (and optionally PDF, FB2). Wire in `convert.rs` and `parse_format()` so convert CLI supports e.g. `--format md` / `--format html`. Readers mod already has commented placeholders for html, markdown, pdf.
 - [ ] **More writers** – Add writers for HTML, Markdown, SSML (and optionally PDF). Wire in `convert.rs` and `parse_format()` so output formats match CLI help (epub, txt, html, md, pdf, ssml).
-- [ ] **Align parse_format with Format** – Extend `parse_format()` to return all formats that have readers/writers (e.g. `html`, `md`, `ssml`, `pdf`) and document which combinations are supported (read × write matrix).
-- [ ] **Convert: unsupported format message** – When detect returns a format with no reader (e.g. PDF), return a clear error suggesting “reading X is not yet supported” instead of a generic read error.
-- [ ] **Config-driven convert** – Use `AppConfig` (e.g. `library.format`, `library.template`, `security.*`) in the convert path when CLI runs convert, so default output format and security limits come from config.
+- [x] **Align parse_format with Format** – Extend `parse_format()` to return all formats that have readers/writers (e.g. `html`, `md`, `ssml`, `pdf`) and document which combinations are supported (read × write matrix).
+- [x] **Convert: unsupported format message** – When detect returns a format with no reader (e.g. PDF), return a clear error suggesting “reading X is not yet supported” instead of a generic read error.
+- [x] **Config-driven convert** – Use `AppConfig` (e.g. `library.format`, `library.template`, `security.*`) in the convert path when CLI runs convert, so default output format and security limits come from config.
 
 ### CLI
 
-- [ ] **Config set: encoding & watch** – Support `config set encoding.*` and `config set watch.*` in `set_config_key()` (e.g. `encoding.unicode_form`, `encoding.smart_quotes`, `watch.debounce_ms`). Today only library, lookup, security are handled.
-- [ ] **Convert: use library template for rename** – When `convert --rename <template>` is used, apply the same template logic as rename subcommand (or delegate to `rename::format_title`) for output filename.
+- [x] **Config set: encoding & watch** – Support `config set encoding.*` and `config set watch.*` in `set_config_key()` (e.g. `encoding.unicode_form`, `encoding.smart_quotes`, `watch.debounce_ms`). Today only library, lookup, security are handled.
+- [x] **Convert: use library template for rename** – When `convert --rename <template>` is used, apply the same template logic as rename subcommand (or delegate to `rename::format_title`) for output filename.
 - [ ] **Progress reporting** – Pass an optional `ProgressHandler` (e.g. CLI progress bar or callback) into `read_document` / `write_document` for long-running convert/optimize so users see activity.
 - [ ] **Batch convert output dir** – When multiple inputs and `--output <dir>` are given, ensure each output file is written under that directory with a unique name (already partially there; verify edge cases and document).
 - [ ] **JSON output consistency** – Ensure all subcommands that support `--json` emit valid JSON only (no mix of log lines and JSON); consider a single helper for JSON vs human output.
 
 ### FFI
 
-- [ ] **Stable error codes** – Document or define constants for return codes (e.g. `EBOOK_OK=0`, `EBOOK_ERR_NULL`, `EBOOK_ERR_INVALID_PATH`, `EBOOK_ERR_CONVERT`, etc.) and use them in `ebook_convert` and `ebook_validate` so C callers can branch on failure reason.
+- [x] **Stable error codes** – Document or define constants for return codes (e.g. `EBOOK_OK=0`, `EBOOK_ERR_NULL`, `EBOOK_ERR_INVALID_PATH`, `EBOOK_ERR_CONVERT`, etc.) and use them in `ebook_convert` and `ebook_validate` so C callers can branch on failure reason. See `include/ebook_converter.h`.
 - [ ] **Additional FFI entry points** – Expose `ebook_repair`, `ebook_optimize`, and optionally `ebook_meta_get` / `ebook_meta_set` for embedding repair/optimize/metadata in other apps.
 - [ ] **Error message buffer** – Optional `ebook_convert_ex(paths, ..., char* err_buf, size_t err_len)` to return a human-readable error string for logging/debugging.
 
@@ -36,8 +36,8 @@ Project-wide backlog for the main ebook-converter (conversion pipeline, CLI, FFI
 
 ### Config & security
 
-- [ ] **Apply security config to reads** – When loading config, build `SecurityLimits` from `security.max_file_size_mb` and `security.max_compression_ratio` and pass into `ReadOptions` so CLI and FFI respect user limits.
-- [ ] **Apply encoding config** – Build `EncodingOptions` from `encoding.*` and pass into `ReadOptions` (and any write path that uses encoding) so config controls normalization, smart quotes, etc.
+- [x] **Apply security config to reads** – When loading config, build `SecurityLimits` from `security.max_file_size_mb` and `security.max_compression_ratio` and pass into `ReadOptions` so CLI and FFI respect user limits.
+- [x] **Apply encoding config** – Build `EncodingOptions` from `encoding.*` and pass into `ReadOptions` (and any write path that uses encoding) so config controls normalization, smart quotes, etc.
 - [ ] **Config validation** – Validate on load (e.g. numeric ranges, known keys for `config set`) and optionally on `config init` write a commented example.
 
 ### Lookup
@@ -57,8 +57,8 @@ Project-wide backlog for the main ebook-converter (conversion pipeline, CLI, FFI
 
 ### Docs & polish
 
-- [ ] **README** – Replace placeholder README with project name, short description, build/install, usage examples (convert, validate, repair, config), and links to docs (library standard, project todo, config keys).
-- [ ] **Fix compiler warnings** – Resolve existing warnings: unused import in `readers/txt.rs`, unused variable in `encoding.rs`, unnecessary `mut` in `merge.rs` and `repair.rs`, dead code in `readers/epub.rs` (ManifestItem.properties).
+- [x] **README** – Replace placeholder README with project name, short description, build/install, usage examples (convert, validate, repair, config), and links to docs (library standard, project todo, config keys).
+- [x] **Fix compiler warnings** – Resolve existing warnings: unused import in `readers/txt.rs`, unused variable in `encoding.rs`, unnecessary `mut` in `merge.rs` and `repair.rs`, dead code in `readers/epub.rs` (ManifestItem.properties).
 - [ ] **Doc comments** – Add or expand module-level docs for `convert`, `detect`, `readers`, `writers`, and public functions used by CLI/FFI/WASM.
 
 ### Tests
@@ -86,7 +86,7 @@ Project-wide backlog for the main ebook-converter (conversion pipeline, CLI, FFI
 
 ### FFI / WASM
 
-- **Single C header** – Ship a small `ebook_converter.h` with function declarations and error code defines for C/C++ consumers.
+- **Single C header** – Ship a small `ebook_converter.h` with function declarations and error code defines for C/C++ consumers. (Done: `include/ebook_converter.h`.)
 - **WASM size** – Track and optionally document WASM binary size; consider `opt-level="z"` and stripping unused format code if building a “minimal” WASM target.
 
 ### Config

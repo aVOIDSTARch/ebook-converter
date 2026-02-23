@@ -1,7 +1,5 @@
 //! Plain text reader: UTF-8 text with optional BOM handling.
 
-use std::io::Read;
-
 use crate::document::*;
 use crate::detect::{DetectResult, Format};
 use crate::error::ReadError;

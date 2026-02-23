@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::path::Path;
 
-use ebook_converter_core::config::{config_path, load_config, AppConfig};
+use ebook_converter_core::config::{config_path, load_config, read_options_from_config, write_options_from_config, AppConfig};
 use ebook_converter_core::convert::{convert_path, parse_format, read_document, write_document};
 use ebook_converter_core::cover::extract_cover;
 use ebook_converter_core::dedup::{find_duplicates, DuplicateStrategy};
@@ -9,7 +9,7 @@ use ebook_converter_core::detect::detect_file;
 use ebook_converter_core::merge;
 use ebook_converter_core::meta;
 use ebook_converter_core::optimize;
-use ebook_converter_core::readers::ReadOptions;
+use ebook_converter_core::rename::format_title;
 use ebook_converter_core::repair;
 use ebook_converter_core::rename;
 use ebook_converter_core::split::{split, SplitStrategy};
@@ -243,7 +243,7 @@ fn main() {
         .init();
 
     let result = match &cli.command {
-        Commands::Convert { input, output, format, rename: _ } => run_convert(input, output.as_deref(), format.as_deref(), cli.json),
+        Commands::Convert { input, output, format, rename } => run_convert(input, output.as_deref(), format.as_deref(), rename.as_deref(), cli.json),
         Commands::Validate { input, strict, accessibility, wcag_level } => run_validate(input, *strict, *accessibility, wcag_level, cli.json),
         Commands::Info { input } => run_info(input, cli.json),
         Commands::Repair { input, output } => run_repair(input, output.as_deref(), cli.json),
@@ -268,10 +268,12 @@ fn run_convert(
     inputs: &[String],
     output: Option<&str>,
     format_str: Option<&str>,
+    rename_template: Option<&str>,
     json: bool,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let read_opts = ReadOptions::default();
-    let write_opts = WriteOptions::default();
+    let cfg = load_config();
+    let read_opts = read_options_from_config(&cfg);
+    let write_opts = write_options_from_config(&cfg);
 
     let output_format = format_str
         .and_then(parse_format)
@@ -285,7 +287,23 @@ fn run_convert(
         }
 
         let _detected = detect_file(input_path)?;
-        let out_path = if let Some(o) = output {
+
+        let out_path = if let Some(template) = rename_template {
+            let doc = read_doc_from_path(input_path)?;
+            let dummy = format!("x.{}", output_format.extension());
+            let name = format_title(
+                &dummy,
+                template,
+                Some(&doc.metadata),
+            ).map_err(|e| format!("rename template: {}", e))?;
+            let base = if let Some(o) = output {
+                let p = Path::new(o);
+                if p.is_dir() { p.to_path_buf() } else { p.parent().unwrap_or(Path::new(".")).to_path_buf() }
+            } else {
+                input_path.parent().unwrap_or(Path::new(".")).to_path_buf()
+            };
+            base.join(name)
+        } else if let Some(o) = output {
             Path::new(o).to_path_buf()
         } else {
             let stem = input_path.file_stem().and_then(|s| s.to_str()).unwrap_or("output");
@@ -293,13 +311,14 @@ fn run_convert(
             input_path.parent().unwrap_or(Path::new(".")).join(format!("{}.{}", stem, ext))
         };
 
-        if out_path.is_dir() {
+        let out_path = if out_path.is_dir() {
             let stem = input_path.file_stem().and_then(|s| s.to_str()).unwrap_or("output");
-            let out_path = out_path.join(format!("{}.{}", stem, output_format.extension()));
-            convert_path(input_path, &out_path, output_format, &read_opts, &write_opts)?;
+            out_path.join(format!("{}.{}", stem, output_format.extension()))
         } else {
-            convert_path(input_path, &out_path, output_format, &read_opts, &write_opts)?;
-        }
+            out_path
+        };
+
+        convert_path(input_path, &out_path, output_format, &read_opts, &write_opts)?;
 
         if !json {
             println!("Converted: {} -> {}", input_path.display(), out_path.display());
@@ -325,7 +344,8 @@ fn run_validate(
     reader.seek(SeekFrom::Start(0))?;
     let filename = path.file_name().and_then(|p| p.to_str());
     let detected = ebook_converter_core::detect::detect(&header, filename)?;
-    let doc = read_document(detected.format, reader, &ReadOptions::default(), None)?;
+    let read_opts = read_options_from_config(&load_config());
+    let doc = read_document(detected.format, reader, &read_opts, None)?;
 
     let opts = ValidateOptions {
         strict,
@@ -633,7 +653,8 @@ fn read_doc_from_path(path: &Path) -> Result<ebook_converter_core::document::Doc
     reader.seek(SeekFrom::Start(0))?;
     let filename = path.file_name().and_then(|p| p.to_str());
     let detected = ebook_converter_core::detect::detect(&header, filename)?;
-    read_document(detected.format, reader, &ReadOptions::default(), None).map_err(|e| e.into())
+    let opts = read_options_from_config(&load_config());
+    read_document(detected.format, reader, &opts, None).map_err(|e| e.into())
 }
 
 fn run_info(input: &str, json: bool) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -649,10 +670,11 @@ fn run_info(input: &str, json: bool) -> Result<(), Box<dyn std::error::Error + S
     let filename = path.file_name().and_then(|p| p.to_str());
     let detected = ebook_converter_core::detect::detect(&header, filename)?;
 
+    let read_opts = read_options_from_config(&load_config());
     let doc = read_document(
         detected.format,
         reader,
-        &ReadOptions::default(),
+        &read_opts,
         None,
     )?;
 
@@ -741,6 +763,17 @@ fn set_config_key(cfg: &mut AppConfig, key: &str, value: &str) -> Result<(), Box
         ["security", sub] => match *sub {
             "max_file_size_mb" => cfg.security.max_file_size_mb = value.parse().ok(),
             "max_compression_ratio" => cfg.security.max_compression_ratio = value.parse().ok(),
+            _ => return Err(format!("Unknown key: {}", key).into()),
+        },
+        ["encoding", sub] => match *sub {
+            "unicode_form" => cfg.encoding.unicode_form = value.to_string(),
+            "smart_quotes" => cfg.encoding.smart_quotes = value.eq_ignore_ascii_case("true") || value == "1",
+            "normalize_ligatures" => cfg.encoding.normalize_ligatures = value.eq_ignore_ascii_case("true") || value == "1",
+            "fix_macos_nfd" => cfg.encoding.fix_macos_nfd = value.eq_ignore_ascii_case("true") || value == "1",
+            _ => return Err(format!("Unknown key: {}", key).into()),
+        },
+        ["watch", sub] => match *sub {
+            "debounce_ms" => cfg.watch.debounce_ms = value.parse().ok(),
             _ => return Err(format!("Unknown key: {}", key).into()),
         },
         _ => return Err(format!("Unknown key: {}", key).into()),

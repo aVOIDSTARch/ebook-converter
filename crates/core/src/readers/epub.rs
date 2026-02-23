@@ -180,6 +180,7 @@ struct OpfData {
 struct ManifestItem {
     href: String,
     media_type: String,
+    #[allow(dead_code)] // reserved for spine/cover properties
     properties: Option<String>,
 }
 

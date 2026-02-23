@@ -39,7 +39,7 @@ pub fn convert(
 /// Validate ebook data. Returns a JSON string of validation issues.
 #[wasm_bindgen]
 pub fn validate_ebook(data: &[u8], input_format: &str) -> Result<String, JsValue> {
-    let input_fmt = parse_format(input_format).ok_or_else(|| JsValue::from_str("Unsupported format"))?;
+    let _input_fmt = parse_format(input_format).ok_or_else(|| JsValue::from_str("Unsupported format"))?;
     let header = if data.len() > 4096 { &data[..4096] } else { data };
     let detected = detect(header, None).map_err(|e| JsValue::from_str(&e.to_string()))?;
     let mut cursor = Cursor::new(data);

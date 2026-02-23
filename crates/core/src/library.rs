@@ -57,7 +57,7 @@ pub struct ListOptions {
 }
 
 /// Result of a list call: entries and optional total count.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ListResult {
     pub entries: Vec<LibraryEntry>,
     /// Total number of entries (if backend supports it); None = unknown.

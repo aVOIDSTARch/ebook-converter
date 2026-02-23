@@ -10,6 +10,18 @@ pub enum UnicodeForm {
     Nfkd,
 }
 
+impl UnicodeForm {
+    /// Parse from config string (e.g. "NFC", "NFD").
+    pub fn from_str(s: &str) -> Self {
+        match s.to_uppercase().as_str() {
+            "NFD" => UnicodeForm::Nfd,
+            "NFKC" => UnicodeForm::Nfkc,
+            "NFKD" => UnicodeForm::Nfkd,
+            _ => UnicodeForm::Nfc,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct EncodingOptions {
     pub unicode_form: UnicodeForm,
@@ -33,7 +45,7 @@ impl Default for EncodingOptions {
     }
 }
 
-pub fn normalize_encoding(doc: &mut Document, opts: &EncodingOptions) {
+pub fn normalize_encoding(doc: &mut Document, _opts: &EncodingOptions) {
     use unicode_normalization::UnicodeNormalization;
 
     fn normalize_str(s: &str) -> String {

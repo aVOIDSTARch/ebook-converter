@@ -15,7 +15,7 @@ pub fn merge(docs: &[Document], opts: &MergeOptions) -> Result<Document, MergeEr
         return Err(MergeError::Failed("No documents to merge".to_string()));
     }
 
-    let mut metadata = docs[0].metadata.clone();
+    let metadata = docs[0].metadata.clone();
     let mut toc = Vec::new();
     let mut content = Vec::new();
     let mut resources = ResourceMap::new();
